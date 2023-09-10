@@ -24,6 +24,7 @@ public enum StableDiffusionRNG {
 }
 
 public enum PipelineError: String, Swift.Error {
+    case invalidConfig
     case missingUnetInputs
     case startingImageProvidedWithoutEncoder
     case startingText2ImgWithoutTextEncoder
@@ -34,11 +35,25 @@ public enum PipelineError: String, Swift.Error {
 public protocol StableDiffusionPipelineProtocol: ResourceManaging {
     var canSafetyCheck: Bool { get }
 
+    /// Generates images based on a given pipeline configuration.
+    ///
+    /// - Parameters:
+    ///   - config: The configuration for the pipeline.
+    ///   - progressHandler: A closure that processes progress updates.
+    /// - Returns: An array of generated `CGImage` objects.
+    /// - Throws: If there is an error during image generation.
     func generateImages(
         configuration config: PipelineConfiguration,
         progressHandler: (PipelineProgress) -> Bool
     ) throws -> [CGImage?]
 
+    /// Decodes latents to images based on a given pipeline configuration.
+    ///
+    /// - Parameters:
+    ///   - latents: An array of latents to decode.
+    ///   - config: The configuration for the pipeline.
+    /// - Returns: An array of generated `CGImage` objects.
+    /// - Throws: If there is an error during decoding.
     func decodeToImages(
         _ latents: [MLShapedArray<Float32>],
         configuration config: PipelineConfiguration
@@ -48,6 +63,55 @@ public protocol StableDiffusionPipelineProtocol: ResourceManaging {
 @available(iOS 16.2, macOS 13.1, *)
 public extension StableDiffusionPipelineProtocol {
     var canSafetyCheck: Bool { false }
+
+    /// Default implementation to generate images based on a given pipeline configuration.
+    /// Provides backwards compatibility for XL and non-XL pipeline configurations.
+    ///
+    /// - Parameters:
+    ///   - config: The configuration for the pipeline.
+    ///   - progressHandler: A closure that processes progress updates.
+    /// - Returns: An array of generated `CGImage` objects.
+    /// - Throws: If there is an error during image generation or if the configuration is invalid.
+    func generateImages(
+        configuration config: PipelineConfiguration,
+        progressHandler: (PipelineProgress) -> Bool
+    ) throws -> [CGImage?] {
+        if #available(iOS 17.0, macOS 14.0, *), self is StableDiffusionXLPipeline {
+            let xlConfig = config.asXLConfiguration()
+            if let xlPipeline = self as? StableDiffusionXLPipeline {
+                return try xlPipeline.generateImages(configuration: xlConfig, progressHandler: progressHandler)
+            }
+        } else {
+            let sdConfig = config.asSDConfiguration()
+            if let sdPipeline = self as? StableDiffusionPipeline {
+                return try sdPipeline.generateImages(configuration: sdConfig, progressHandler: progressHandler)
+            }
+        }
+        throw PipelineError.invalidConfig
+    }
+
+    /// Default implementation to decode latents to images based on a given pipeline configuration.
+    /// Provides backwards compatibility for XL and non-XL pipeline configurations.
+    ///
+    /// - Parameters:
+    ///   - latents: An array of latents to decode.
+    ///   - config: The configuration for the pipeline.
+    /// - Returns: An array of generated `CGImage` objects.
+    /// - Throws: If there is an error during decoding or if the configuration is invalid.
+    func decodeToImages(_ latents: [MLShapedArray<Float32>], configuration config: PipelineConfiguration) throws -> [CGImage?] {
+        if #available(macOS 14.0, *), self is StableDiffusionXLPipeline {
+            let xlConfig: PipelineConfigurationXL = (config as? PipelineConfigurationXL) ?? config.asXLConfiguration()
+            if let xlPipeline = self as? StableDiffusionXLPipeline {
+                return try xlPipeline.decodeToImages(latents, configuration: xlConfig)
+            }
+        } else {
+            let sdConfig = config.asSDConfiguration()
+            if let sdPipeline = self as? StableDiffusionPipeline {
+                return try sdPipeline.decodeToImages(latents, configuration: sdConfig)
+            }
+        }
+        throw PipelineError.invalidConfig
+    }
 }
 
 /// A pipeline used to generate image samples from text input using stable diffusion
