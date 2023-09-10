@@ -12,8 +12,8 @@ public enum PipelineMode {
 }
 
 /// Image generation configuration
-public struct PipelineConfiguration: Hashable {
-    
+open class PipelineConfiguration {
+
     /// Text prompt to guide sampling
     public var prompt: String
     /// Negative text prompt to guide sampling
@@ -24,10 +24,6 @@ public struct PipelineConfiguration: Hashable {
     /// Must be between 0 and 1
     /// Higher values will result in greater transformation of the `startingImage`
     public var strength: Float = 1.0
-    /// Fraction of inference steps to at which to start using the refiner unet if present in `textToImage` mode
-    /// Must be between 0 and 1
-    /// Higher values will result in fewer refiner steps
-    public var refinerStart: Float = 0.7
     /// Number of images to generate
     public var imageCount: Int = 1
     /// Number of inference steps to perform
@@ -38,30 +34,14 @@ public struct PipelineConfiguration: Hashable {
     public var guidanceScale: Float = 7.5
     /// List of Images for available ControlNet Models
     public var controlNetInputs: [CGImage] = []
-    /// Safety checks are only performed if `self.canSafetyCheck && !disableSafety`
-    public var disableSafety: Bool = false
     /// Enables progress updates to decode `currentImages` from denoised latent images for better previews
     public var useDenoisedIntermediates: Bool = false
     /// The type of Scheduler to use.
     public var schedulerType: StableDiffusionScheduler = .pndmScheduler
     /// The type of RNG to use
     public var rngType: StableDiffusionRNG = .numpyRNG
-    /// Scale factor to use on the latent after encoding
-    public var encoderScaleFactor: Float32 = 0.18215
-    /// Scale factor to use on the latent before decoding
-    public var decoderScaleFactor: Float32 = 0.18215
-    /// If `originalSize` is not the same as `targetSize` the image will appear to be down- or upsampled.
-    /// Part of SDXL’s micro-conditioning as explained in section 2.2 of https://huggingface.co/papers/2307.01952.
-    public var originalSize: Float32 = 1024
-    /// `cropsCoordsTopLeft` can be used to generate an image that appears to be “cropped” from the position `cropsCoordsTopLeft` downwards.
-    /// Favorable, well-centered images are usually achieved by setting `cropsCoordsTopLeft` to (0, 0).
-    public var cropsCoordsTopLeft: Float32 = 0
-    /// For most cases, `target_size` should be set to the desired height and width of the generated image.
-    public var targetSize: Float32 = 1024
-    /// Used to simulate an aesthetic score of the generated image by influencing the positive text condition.
-    public var aestheticScore: Float32 = 6
-    /// Can be used to simulate an aesthetic score of the generated image by influencing the negative text condition.
-    public var negativeAestheticScore: Float32 = 2.5
+    /// Safety checks are only performed if `self.canSafetyCheck && !disableSafety`
+    public var disableSafety: Bool = false
 
     /// Given the configuration, what mode will be used for generation
     public var mode: PipelineMode {
@@ -80,6 +60,55 @@ public struct PipelineConfiguration: Hashable {
         self.prompt = prompt
     }
 
+    public func asSDConfiguration() -> PipelineConfigurationSD {
+        // Setup defaults for standard config
+        let config = PipelineConfigurationSD(prompt: self.prompt)
+
+        // Copy common properties
+        config.negativePrompt = self.negativePrompt
+        config.startingImage = self.startingImage
+        config.strength = self.strength
+        config.imageCount = self.imageCount
+        config.stepCount = self.stepCount
+        config.seed = self.seed
+        config.guidanceScale = self.guidanceScale
+        config.controlNetInputs = self.controlNetInputs
+        config.useDenoisedIntermediates = self.useDenoisedIntermediates
+        config.schedulerType = self.schedulerType
+        config.rngType = self.rngType
+        config.disableSafety = self.disableSafety
+
+        return config
+    }
+
+    public func asXLConfiguration() -> PipelineConfigurationXL {
+        // Setup defaults for XL config
+        let xlConfig = PipelineConfigurationXL(prompt: self.prompt)
+
+        // Copy common properties
+        xlConfig.negativePrompt = self.negativePrompt
+        xlConfig.startingImage = self.startingImage
+        xlConfig.strength = self.strength
+        xlConfig.imageCount = self.imageCount
+        xlConfig.stepCount = self.stepCount
+        xlConfig.seed = self.seed
+        xlConfig.guidanceScale = self.guidanceScale
+        xlConfig.controlNetInputs = self.controlNetInputs
+        xlConfig.useDenoisedIntermediates = self.useDenoisedIntermediates
+        xlConfig.schedulerType = self.schedulerType
+        xlConfig.rngType = self.rngType
+        xlConfig.disableSafety = self.disableSafety
+
+        return xlConfig
+    }
+
+}
+
+public class PipelineConfigurationSD: PipelineConfiguration {
+    /// Scale factor to use on the latent after encoding
+    public var encoderScaleFactor: Float32 = 0.18215
+    /// Scale factor to use on the latent before decoding
+    public var decoderScaleFactor: Float32 = 0.18215
 }
 
 
@@ -90,5 +119,5 @@ public extension StableDiffusionPipeline {
     typealias Mode = PipelineMode
 
     /// Image generation configuration
-    typealias Configuration = PipelineConfiguration
+    typealias Configuration = PipelineConfigurationSD
 }

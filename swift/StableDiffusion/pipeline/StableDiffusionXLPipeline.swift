@@ -14,10 +14,10 @@ import NaturalLanguage
 /// [Hugging Face Diffusers XL Pipeline](https://github.com/huggingface/diffusers/blob/main/src/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl.py)
 @available(iOS 17.0, macOS 14.0, *)
 public struct StableDiffusionXLPipeline: StableDiffusionPipelineProtocol {
-    
-    public typealias Configuration = PipelineConfiguration
+
+    public typealias Configuration = PipelineConfigurationXL
     public typealias Progress = PipelineProgress
-    
+
     /// Model to generate embeddings for tokenized input text
     var textEncoder: TextEncoderXLModel?
     var textEncoder2: TextEncoderXLModel
@@ -135,6 +135,7 @@ public struct StableDiffusionXLPipeline: StableDiffusionPipelineProtocol {
             print("Error prewarming resources for vae encoder: \(error)")
         }
     }
+    
     /// Image generation using stable diffusion
     /// - Parameters:
     ///   - configuration: Image generation configuration
@@ -375,6 +376,10 @@ public struct StableDiffusionXLPipeline: StableDiffusionPipelineProtocol {
             return scheduler.addNoise(originalSample: latent, noise: samples, strength: config.strength)
         }
         return samples
+    }
+
+    public func decodeToImages(_ latents: [MLShapedArray<Float32>], configuration config: PipelineConfiguration) throws -> [CGImage?] {
+        try decodeToImages(latents, configuration: config as! Configuration)
     }
 
     public func decodeToImages(_ latents: [MLShapedArray<Float32>], configuration config: Configuration) throws -> [CGImage?] {
