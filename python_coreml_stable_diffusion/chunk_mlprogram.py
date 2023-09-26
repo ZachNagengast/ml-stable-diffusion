@@ -366,7 +366,7 @@ if __name__ == "__main__":
         "--check-output-correctness",
         action="store_true",
         help=
-        ("If specified, compares the outputs of original Core ML model with that of pipelined CoreML model chunks and reports PSNR in dB. ",
+        ("If specified, compares the outputs of original Core ML model with that of pipelined CoreML model chunks and reports PSNR in dB. "
          "Enabling this feature uses more memory. Disable it if your machine runs out of memory."
          ))
     parser.add_argument(
